@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/config/databse.ts","./src/config/jwt.ts","./src/controllers/authcontroller.ts","./src/controllers/rolecontroller.ts","./src/controllers/usercontroller.ts","./src/middlewares/authmiddleware.ts","./src/models/user.ts","./src/routes/authroutes.ts","./src/routes/user.ts","./src/types/express/index.d.ts"],"errors":true,"version":"5.7.2"}

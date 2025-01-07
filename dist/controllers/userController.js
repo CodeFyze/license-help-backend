@@ -1,106 +1,122 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUser = exports.updateUser = exports.getUser = exports.getUsers = void 0;
-const user_1 = require("../models/user"); // Import the models for each role
+exports.register = exports.assignRole = exports.deleteUser = exports.updateUser = exports.getUser = exports.getUsers = void 0;
+const user_1 = require("../models/user");
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const mongoose_1 = require("mongoose");
-// Utility function to get the correct model based on role or collection
-const getModelForRole = (role) => {
-    switch (role) {
-        case user_1.UserRole.Instructor:
-            return user_1.Instructor;
-        case user_1.UserRole.Admin:
-            return user_1.Admin;
-        case user_1.UserRole.Student:
-        default:
-            return user_1.Student; // Default to Student model
-    }
-};
-// Get all users (across all collections)
-const getUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { role } = req.query;
+const jwt_1 = require("../config/jwt");
+const getUsers = async (req, res) => {
+    console.log('getUsers endpoint hit');
     try {
-        // Select the correct model based on the role query
-        const UserModel = role ? getModelForRole(role) : user_1.Student; // Default to Student if no role is provided
-        const users = yield UserModel.find();
-        res.json(users);
+        const { role } = req.query; // Extract role from query
+        const query = role ? { role } : {};
+        const users = await user_1.User.find(query).select('-password'); // Exclude password from response
+        console.log('Retrieved Users:', users); // Log the fetched users
+        res.json(users); // Respond with the users
     }
     catch (error) {
+        if (error instanceof Error) {
+            console.error('Error fetching users:', error.message);
+        }
+        else {
+            console.error('Unknown error:', error);
+        }
         res.status(500).json({ message: 'Error fetching users' });
     }
-});
+};
 exports.getUsers = getUsers;
 // Get a single user by ID
-const getUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getUser = async (req, res) => {
     const { id } = req.params;
     if (!mongoose_1.Types.ObjectId.isValid(id)) {
         return res.status(400).json({ message: 'Invalid user ID' });
     }
     try {
-        // Find the user in all possible collections
-        const student = yield user_1.Student.findById(id);
-        const instructor = yield user_1.Instructor.findById(id);
-        const admin = yield user_1.Admin.findById(id);
-        const user = student || instructor || admin; // Return the first match found
-        if (!user) {
+        const user = await user_1.User.findById(id);
+        if (!user)
             return res.status(404).json({ message: 'User not found' });
-        }
         res.json(user);
     }
     catch (error) {
         res.status(500).json({ message: 'Error fetching user' });
     }
-});
+};
 exports.getUser = getUser;
-// Update a user by ID
-const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+// Update user details (username, email, role)
+const updateUser = async (req, res) => {
     const { id } = req.params;
     const { username, email, role } = req.body;
     if (!mongoose_1.Types.ObjectId.isValid(id)) {
         return res.status(400).json({ message: 'Invalid user ID' });
     }
     try {
-        // Dynamically select the correct model based on role
-        const UserModel = getModelForRole(role);
-        // Update the user based on the selected model
-        const user = yield UserModel.findByIdAndUpdate(id, { username, email, role }, { new: true });
-        if (!user) {
+        const user = await user_1.User.findByIdAndUpdate(id, { username, email, role }, { new: true });
+        if (!user)
             return res.status(404).json({ message: 'User not found' });
-        }
         res.json(user);
     }
     catch (error) {
         res.status(500).json({ message: 'Error updating user' });
     }
-});
+};
 exports.updateUser = updateUser;
 // Delete a user by ID
-const deleteUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteUser = async (req, res) => {
     const { id } = req.params;
     if (!mongoose_1.Types.ObjectId.isValid(id)) {
         return res.status(400).json({ message: 'Invalid user ID' });
     }
     try {
-        // Dynamically select the correct model based on the ID
-        const student = yield user_1.Student.findByIdAndDelete(id);
-        const instructor = yield user_1.Instructor.findByIdAndDelete(id);
-        const admin = yield user_1.Admin.findByIdAndDelete(id);
-        const user = student || instructor || admin;
-        if (!user) {
+        const user = await user_1.User.findByIdAndDelete(id);
+        if (!user)
             return res.status(404).json({ message: 'User not found' });
-        }
         res.json({ message: 'User deleted' });
     }
     catch (error) {
         res.status(500).json({ message: 'Error deleting user' });
     }
-});
+};
 exports.deleteUser = deleteUser;
+// Assign a new role to a user
+const assignRole = async (req, res) => {
+    const { userId, role } = req.body;
+    try {
+        const user = await user_1.User.findById(userId);
+        if (!user)
+            return res.status(404).json({ message: 'User not found' });
+        user.role = role;
+        await user.save();
+        res.json(user);
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Error assigning role' });
+    }
+};
+exports.assignRole = assignRole;
+// Register a new user
+const register = async (req, res) => {
+    const { username, email, password, role } = req.body;
+    try {
+        const existingUser = await user_1.User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: 'User already exists' });
+        }
+        const hashedPassword = await bcryptjs_1.default.hash(password, 10);
+        const user = new user_1.User({
+            username,
+            email,
+            password: hashedPassword,
+            role: role || user_1.UserRole.Student, // Default to 'student' if no role is provided
+        });
+        await user.save();
+        const token = (0, jwt_1.generateToken)(user._id.toString(), user.role);
+        res.status(201).json({ token, userId: user._id, role: user.role });
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Error registering user' });
+    }
+};
+exports.register = register;

@@ -1,30 +1,31 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Admin = exports.Instructor = exports.Student = exports.UserRole = void 0;
-// user.ts
+exports.User = exports.UserRole = void 0;
 const mongoose_1 = require("mongoose");
-// Enum for user roles
+// Define possible user roles
 var UserRole;
 (function (UserRole) {
     UserRole["Student"] = "student";
     UserRole["Instructor"] = "instructor";
     UserRole["Admin"] = "admin";
 })(UserRole || (exports.UserRole = UserRole = {}));
-// User schema definition
+// Create the User schema with role-based fields
 const userSchema = new mongoose_1.Schema({
     username: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    role: {
-        type: String,
-        enum: Object.values(UserRole), // Use UserRole here to restrict values
-        default: UserRole.Student, // Default value is 'student'
-    },
+    password: { type: String, required: true },
+    role: { type: String, enum: Object.values(UserRole), default: UserRole.Student },
+    // Instructor-specific fields (conditionally required based on the role)
+    firstName: { type: String, required: function () { return this.role === UserRole.Instructor; } },
+    surname: { type: String, required: function () { return this.role === UserRole.Instructor; } },
+    phone: { type: String, required: function () { return this.role === UserRole.Instructor; } },
+    postcode: { type: String, required: function () { return this.role === UserRole.Instructor; } },
+    transmission: { type: String, enum: ["Automatic", "Manual"], required: function () { return this.role === UserRole.Instructor; }, default: "Automatic" },
+    subject: { type: String, required: function () { return this.role === UserRole.Instructor; }, default: "" },
+    message: { type: String, required: function () { return this.role === UserRole.Instructor; } },
+    // attachments: { type: [Buffer], required: function() { return this.role === UserRole.Instructor; }, default: [] },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
 });
-// Models for each role, specifying different collections
-const Student = (0, mongoose_1.model)("Student", userSchema, "students");
-exports.Student = Student;
-const Instructor = (0, mongoose_1.model)("Instructor", userSchema, "instructors");
-exports.Instructor = Instructor;
-const Admin = (0, mongoose_1.model)("Admin", userSchema, "admins");
-exports.Admin = Admin;
+// Model for the User schema
+exports.User = (0, mongoose_1.model)("User", userSchema);

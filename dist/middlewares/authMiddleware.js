@@ -3,8 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyTokenMiddleware = void 0;
 const jwt_1 = require("../config/jwt");
 const verifyTokenMiddleware = (req, res, next) => {
-    var _a;
-    const token = (_a = req.header('Authorization')) === null || _a === void 0 ? void 0 : _a.replace('Bearer ', '');
+    const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
         return res.status(403).json({ message: 'Access denied' });
     }
